@@ -51,6 +51,8 @@ github.com/arcgolabs/eventx v0.1.2 h1:ikt4Cw+GW9Q1NsJVmmen74rQkNZBCdpqlwIfryYrGu
 github.com/arcgolabs/eventx v0.1.2/go.mod h1:8pvEz7hCLMyC8Y1VdX8+s7RjnY0haFLau4aiRmrkJkw=
 github.com/arcgolabs/logx v0.1.2 h1:+VJF7T/mfI482CpbIQ4tSBXbxTVcOkmBaTOj+DaCom0=
 github.com/arcgolabs/logx v0.1.2/go.mod h1:GgVdUPfBZ3Hao7h5ahdGwqHDXY9q5mhMmnS7t3NNqzU=
+github.com/arcgolabs/logx v0.1.3 h1:0P4+g63hrEaW2M/MMhpwClEdYeTvg0OLuFe5M+NuqV0=
+github.com/arcgolabs/logx v0.1.3/go.mod h1:fGRpGfRx2HRlRZ/JiAZ7tD5SvteeKg75nleq+oLFvSs=
 github.com/arcgolabs/mapper v0.2.0 h1:SbaWAb1USdGNg2vAvrk5yYimPV5gQ4wf+FglFbV7RIg=
 github.com/arcgolabs/mapper v0.2.0/go.mod h1:zd+mapJHQ5R0ZikEYyVeZU3O4T1G+LfQw5ynaQ1vnFk=
 github.com/arcgolabs/observabilityx v0.4.0 h1:7ihfQev5KSV8xcO+6DcbMcUYSDVsYhnENH2ZbHB5IxY=
@@ -478,6 +480,8 @@ github.com/samber/lo v1.53.0 h1:t975lj2py4kJPQ6haz1QMgtId2gtmfktACxIXArw3HM=
 github.com/samber/lo v1.53.0/go.mod h1:4+MXEGsJzbKGaUEQFKBq2xtfuznW9oz/WrgyzMzRoM0=
 github.com/samber/mo v1.16.0 h1:qpEPCI63ou6wXlsNDMLE0IIN8A+devbGX/K1xdgr4b4=
 github.com/samber/mo v1.16.0/go.mod h1:DlgzJ4SYhOh41nP1L9kh9rDNERuf8IqWSAs+gj2Vxag=
+github.com/samber/mo v1.17.0 h1:EbeLc7nxIdpalstxQQakLOcXxULuMRqo7PJPtY18bQg=
+github.com/samber/mo v1.17.0/go.mod h1:DlgzJ4SYhOh41nP1L9kh9rDNERuf8IqWSAs+gj2Vxag=
 github.com/samber/oops v1.22.0 h1:fmWRC3YRUXFzpZ9Vs4nuckrsnCHv1cFV/bEm00Wvm0Y=
 github.com/samber/oops v1.22.0/go.mod h1:8ZDRxwQdphVhmLtEX9I6134LHJe5yeCV8cTfHz3m91Y=
 github.com/samber/oops/loggers/zerolog v0.0.0-20260528145910-37b62d050ba2 h1:prWUYh6wqpd6rYLuNClB0Z22v88jSLTZ06A93mf5MnM=

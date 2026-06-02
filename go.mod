@@ -13,7 +13,7 @@ require (
 	github.com/arcgolabs/configx/format/toml v0.0.0-20260517161814-12696a4be3fe
 	github.com/arcgolabs/dix v0.11.0
 	github.com/arcgolabs/eventx v0.1.2
-	github.com/arcgolabs/logx v0.1.2
+	github.com/arcgolabs/logx v0.1.3
 	github.com/arcgolabs/mapper v0.2.0
 	github.com/arcgolabs/observabilityx v0.4.0
 	github.com/arcgolabs/storx/bboltx v0.5.0
@@ -89,11 +89,13 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.7 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
+	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
+	github.com/knadh/koanf/parsers/hcl v1.0.0 // indirect
 	github.com/knadh/koanf/parsers/toml/v2 v2.2.1 // indirect
 	github.com/knadh/koanf/providers/confmap v1.0.0 // indirect
 	github.com/knadh/koanf/providers/env/v2 v2.0.0 // indirect
@@ -123,7 +125,7 @@ require (
 	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/samber/do/v2 v2.0.0 // indirect
 	github.com/samber/go-type-to-string v1.8.0 // indirect
-	github.com/samber/mo v1.16.0 // indirect
+	github.com/samber/mo v1.17.0 // indirect
 	github.com/samber/oops/loggers/zerolog v0.0.0-20260528145910-37b62d050ba2 // indirect
 	github.com/samber/slog-common v0.22.0 // indirect
 	github.com/samber/slog-zerolog/v2 v2.9.2 // indirect
