@@ -30,6 +30,7 @@ require (
 	github.com/goccy/go-json v0.10.6
 	github.com/gofiber/fiber/v3 v3.3.0
 	github.com/gofiber/template/html/v3 v3.0.5
+	github.com/google/renameio/v2 v2.0.2
 	github.com/hashicorp/memberlist v0.5.4
 	github.com/klauspost/compress v1.18.6
 	github.com/lni/dragonboat/v4 v4.0.0-20250723143628-076c7f6497dc

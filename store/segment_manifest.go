@@ -9,6 +9,7 @@ import (
 
 	collectionlist "github.com/arcgolabs/collectionx/list"
 	json "github.com/goccy/go-json"
+	renameio "github.com/google/renameio/v2/maybe"
 )
 
 const segmentManifestFile = "topics.json"
@@ -72,11 +73,10 @@ func (s *StorxLogStore) persistLogManifest() error {
 	if err := os.MkdirAll(s.rootDir, 0o750); err != nil {
 		return wrapExternal(err, "create segment log manifest directory")
 	}
-	tmpPath := s.segmentManifestPath() + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0o600); err != nil {
+	if err := renameio.WriteFile(s.segmentManifestPath(), data, 0o600); err != nil {
 		return wrapExternal(err, "write segment log manifest")
 	}
-	return wrapExternal(replaceFile(tmpPath, s.segmentManifestPath()), "replace segment log manifest")
+	return nil
 }
 
 func (s *StorxLogStore) segmentManifestPath() string {

@@ -26,16 +26,33 @@ func newConfiguredAuthEngine(cfg AuthConfig, logger *slog.Logger) *authx.Engine 
 }
 
 func newConfiguredAuthProvider(cfg AuthConfig) authx.AuthenticationProvider {
-	tokens := configuredAuthTokens(cfg.StaticTokens)
-	return authx.NewAuthenticationProviderFunc(func(_ context.Context, req AuthRequest) (authx.AuthenticationResult, error) {
-		token := strings.TrimSpace(req.Token)
-		if token != "" {
-			if identity, ok := tokens.Get(token); ok {
-				identity.ClientID = nonEmpty(strings.TrimSpace(req.ClientID), identity.ClientID)
-				return authenticationResult(identity), nil
-			}
-			return authx.AuthenticationResult{}, authx.NewError(authx.ErrorCodeUnauthenticated, "invalid auth token")
+	staticProvider := newStaticTokenAuthProvider(cfg)
+	fallbackProvider := newFallbackAuthProvider(cfg)
+	return authx.NewSelectorAuthenticationProvider(func(
+		_ context.Context,
+		req AuthRequest,
+	) (authx.TypedAuthenticationProvider[AuthRequest], error) {
+		if strings.TrimSpace(req.Token) != "" {
+			return staticProvider, nil
 		}
+		return fallbackProvider, nil
+	})
+}
+
+func newStaticTokenAuthProvider(cfg AuthConfig) authx.TypedAuthenticationProvider[AuthRequest] {
+	tokens := configuredAuthTokens(cfg.StaticTokens)
+	return authx.TypedAuthenticationProviderFunc[AuthRequest](func(_ context.Context, req AuthRequest) (authx.AuthenticationResult, error) {
+		token := strings.TrimSpace(req.Token)
+		if identity, ok := tokens.Get(token); ok {
+			identity.ClientID = nonEmpty(strings.TrimSpace(req.ClientID), identity.ClientID)
+			return authenticationResult(identity), nil
+		}
+		return authx.AuthenticationResult{}, authx.NewError(authx.ErrorCodeUnauthenticated, "invalid auth token")
+	})
+}
+
+func newFallbackAuthProvider(cfg AuthConfig) authx.TypedAuthenticationProvider[AuthRequest] {
+	return authx.TypedAuthenticationProviderFunc[AuthRequest](func(_ context.Context, req AuthRequest) (authx.AuthenticationResult, error) {
 		if cfg.Enabled && !cfg.AllowAnonymous {
 			return authx.AuthenticationResult{}, authx.NewError(authx.ErrorCodeUnauthenticated, "auth token is required")
 		}
