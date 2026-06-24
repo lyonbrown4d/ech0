@@ -1,8 +1,8 @@
 package protocol
 
 import (
-	collectionlist "github.com/arcgolabs/collectionx/list"
-	collectionmapping "github.com/arcgolabs/collectionx/mapping"
+	"slices"
+
 	"github.com/samber/oops"
 )
 
@@ -16,15 +16,15 @@ type bodyCodecEntry struct {
 }
 
 type bodyCodecRegistry struct {
-	encoders *collectionmapping.Map[uint16, bodyEncoder]
-	decoders *collectionmapping.Map[uint16, bodyDecoder]
+	encoders map[uint16]bodyEncoder
+	decoders map[uint16]bodyDecoder
 	commands []uint16
 }
 
 var bodyCodecs = newBodyCodecRegistry()
 
 func EncodeBody(command uint16, value any) ([]byte, error) {
-	encoder, ok := bodyCodecs.encoders.Get(command)
+	encoder, ok := bodyCodecs.encoders[command]
 	if !ok {
 		return nil, unsupportedCommand(command)
 	}
@@ -32,7 +32,7 @@ func EncodeBody(command uint16, value any) ([]byte, error) {
 }
 
 func DecodeBody(command uint16, data []byte, target any) error {
-	decoder, ok := bodyCodecs.decoders.Get(command)
+	decoder, ok := bodyCodecs.decoders[command]
 	if !ok {
 		return unsupportedCommand(command)
 	}
@@ -40,19 +40,23 @@ func DecodeBody(command uint16, data []byte, target any) error {
 }
 
 func registeredCommandIDs() []uint16 {
-	return collectionlist.NewList(bodyCodecs.commands...).Values()
+	if len(bodyCodecs.commands) == 0 {
+		return nil
+	}
+	return slices.Clone(bodyCodecs.commands)
 }
 
 func newBodyCodecRegistry() bodyCodecRegistry {
-	encoders := collectionmapping.NewMap[uint16, bodyEncoder]()
-	decoders := collectionmapping.NewMap[uint16, bodyDecoder]()
-	commands := collectionlist.NewList[uint16]()
-	for _, entry := range bodyCodecEntries().Values() {
-		encoders.Set(entry.command, entry.encode)
-		decoders.Set(entry.command, entry.decode)
-		commands.Add(entry.command)
+	entries := bodyCodecEntries()
+	encoders := make(map[uint16]bodyEncoder, len(entries))
+	decoders := make(map[uint16]bodyDecoder, len(entries))
+	commands := make([]uint16, 0, len(entries))
+	for _, entry := range entries {
+		encoders[entry.command] = entry.encode
+		decoders[entry.command] = entry.decode
+		commands = append(commands, entry.command)
 	}
-	return bodyCodecRegistry{encoders: encoders, decoders: decoders, commands: commands.Values()}
+	return bodyCodecRegistry{encoders: encoders, decoders: decoders, commands: commands}
 }
 
 func unsupportedCommand(command uint16) error {

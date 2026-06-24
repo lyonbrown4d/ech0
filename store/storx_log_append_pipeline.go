@@ -1,7 +1,5 @@
 package store
 
-import collectionlist "github.com/arcgolabs/collectionx/list"
-
 const (
 	appendPipelineQueueSize   = 1024
 	appendPipelineMaxRequests = 1024
@@ -28,18 +26,17 @@ type appendPipelineResult struct {
 func (s *StorxLogStore) appendPipeline(topicPartition TopicPartition) *appendPipeline {
 	s.appendPipesMu.Lock()
 	defer s.appendPipesMu.Unlock()
-	pipeline, ok := s.appendPipelines.Get(topicPartition)
-	if ok {
-		return pipeline
+	pipeline, loaded := s.appendPipelines.GetOrCompute(topicPartition, func() *appendPipeline {
+		return &appendPipeline{
+			store:    s,
+			tp:       topicPartition,
+			requests: make(chan appendPipelineRequest, appendPipelineQueueSize),
+			done:     make(chan struct{}),
+		}
+	})
+	if !loaded {
+		go pipeline.run()
 	}
-	pipeline = &appendPipeline{
-		store:    s,
-		tp:       topicPartition,
-		requests: make(chan appendPipelineRequest, appendPipelineQueueSize),
-		done:     make(chan struct{}),
-	}
-	s.appendPipelines.Set(topicPartition, pipeline)
-	go pipeline.run()
 	return pipeline
 }
 
@@ -64,22 +61,22 @@ func (p *appendPipeline) run() {
 }
 
 func (p *appendPipeline) drain(first appendPipelineRequest) []appendPipelineRequest {
-	requests := collectionlist.NewListWithCapacity[appendPipelineRequest](appendPipelineMaxRequests)
-	requests.Add(first)
+	requests := make([]appendPipelineRequest, 0, appendPipelineMaxRequests)
+	requests = append(requests, first)
 	records := len(first.records)
-	for requests.Len() < appendPipelineMaxRequests && records < appendPipelineMaxRecords {
+	for len(requests) < appendPipelineMaxRequests && records < appendPipelineMaxRecords {
 		select {
 		case request, ok := <-p.requests:
 			if !ok {
-				return requests.Values()
+				return requests
 			}
-			requests.Add(request)
+			requests = append(requests, request)
 			records += len(request.records)
 		default:
-			return requests.Values()
+			return requests
 		}
 	}
-	return requests.Values()
+	return requests
 }
 
 func (p *appendPipeline) flush(requests []appendPipelineRequest) {
@@ -102,11 +99,11 @@ func flattenAppendPipelineRecords(requests []appendPipelineRequest) []RecordAppe
 	for _, request := range requests {
 		total += len(request.records)
 	}
-	records := collectionlist.NewListWithCapacity[RecordAppend](total)
+	records := make([]RecordAppend, 0, total)
 	for _, request := range requests {
-		records.Add(request.records...)
+		records = append(records, request.records...)
 	}
-	return records.Values()
+	return records
 }
 
 func completeAppendPipelineRequests(requests []appendPipelineRequest, records []Record, err error) {

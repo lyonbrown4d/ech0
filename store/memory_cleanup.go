@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	collectionset "github.com/arcgolabs/collectionx/set"
 )
 
@@ -60,14 +59,14 @@ func (s *MemoryStore) Compact(ctx context.Context, nowMS uint64, sealedSegmentBa
 }
 
 func filterRemovedRecords(records []Record, remove *collectionset.Set[uint64]) ([]Record, int) {
-	kept := collectionlist.NewListWithCapacity[Record](len(records))
+	kept := make([]Record, 0, len(records))
 	removed := 0
 	for _, record := range records {
 		if remove.Contains(record.Offset) {
 			removed++
 			continue
 		}
-		kept.Add(cloneRecord(record))
+		kept = append(kept, cloneRecord(record))
 	}
-	return kept.Values(), removed
+	return kept, removed
 }

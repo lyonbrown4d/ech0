@@ -2,8 +2,7 @@ package store
 
 import (
 	"cmp"
-
-	collectionlist "github.com/arcgolabs/collectionx/list"
+	"slices"
 )
 
 func (s *MemoryStore) SaveConsumerOffsetState(state ConsumerOffsetState) error {
@@ -87,9 +86,9 @@ func validateConsumerOffsetState(state ConsumerOffsetState) error {
 }
 
 func sortConsumerOffsetStates(states []ConsumerOffsetState) []ConsumerOffsetState {
-	return collectionlist.NewListWithCapacity[ConsumerOffsetState](len(states), states...).
-		Sort(compareConsumerOffsetState).
-		Values()
+	sorted := slices.Clone(states)
+	slices.SortFunc(sorted, compareConsumerOffsetState)
+	return sorted
 }
 
 func compareConsumerOffsetState(left, right ConsumerOffsetState) int {

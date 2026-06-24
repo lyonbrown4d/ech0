@@ -6,6 +6,7 @@ import (
 	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/lyonbrown4d/ech0/protocol"
 	"github.com/lyonbrown4d/ech0/store"
+	"github.com/samber/lo"
 )
 
 func batchRecordsFromProtocol(req protocol.ProduceBatchRequest) ([]store.RecordAppend, error) {
@@ -22,11 +23,12 @@ func batchRecordsFromProtocol(req protocol.ProduceBatchRequest) ([]store.RecordA
 }
 
 func batchRecordItemsFromProtocol(records []protocol.ProduceBatchRecord) []store.RecordAppend {
-	out := collectionlist.NewListWithCapacity[store.RecordAppend](len(records))
-	for index := range records {
-		out.Add(recordItemFromProtocol(records[index]))
+	if len(records) == 0 {
+		return nil
 	}
-	return out.Values()
+	return lo.Map(records, func(record protocol.ProduceBatchRecord, _ int) store.RecordAppend {
+		return recordItemFromProtocol(record)
+	})
 }
 
 func recordItemFromProtocol(record protocol.ProduceBatchRecord) store.RecordAppend {
@@ -42,11 +44,12 @@ func recordItemFromProtocol(record protocol.ProduceBatchRecord) store.RecordAppe
 }
 
 func batchPayloadsFromProtocol(payloads [][]byte) []store.RecordAppend {
-	out := collectionlist.NewListWithCapacity[store.RecordAppend](len(payloads))
-	for index := range payloads {
-		out.Add(store.NewRecordAppend(payloads[index]))
+	if len(payloads) == 0 {
+		return nil
 	}
-	return out.Values()
+	return lo.Map(payloads, func(payload []byte, _ int) store.RecordAppend {
+		return store.NewRecordAppend(payload)
+	})
 }
 
 func batchRecordsWithRequestRoutingKey(req protocol.ProduceBatchRequest, records []store.RecordAppend) []store.RecordAppend {
@@ -63,14 +66,15 @@ func batchRecordsWithRequestRoutingKey(req protocol.ProduceBatchRequest, records
 }
 
 func fanoutResultToProtocol(result FanoutResult) protocol.ProduceFanoutResponse {
-	out := collectionlist.NewListWithCapacity[protocol.ProduceFanoutRecordResponse](len(result.Records))
-	for index := range result.Records {
-		record := &result.Records[index]
-		out.Add(protocol.ProduceFanoutRecordResponse{
+	if len(result.Records) == 0 {
+		return protocol.ProduceFanoutResponse{}
+	}
+	records := lo.Map(result.Records, func(record FanoutRecordResult, _ int) protocol.ProduceFanoutRecordResponse {
+		return protocol.ProduceFanoutRecordResponse{
 			Partition:  record.Partition,
 			Offset:     record.Record.Offset,
 			NextOffset: record.NextOffset,
-		})
-	}
-	return protocol.ProduceFanoutResponse{Records: out.Values()}
+		}
+	})
+	return protocol.ProduceFanoutResponse{Records: records}
 }

@@ -1,15 +1,15 @@
 package store
 
 import (
+	"cmp"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	collectionmapping "github.com/arcgolabs/collectionx/mapping"
 )
 
@@ -57,12 +57,12 @@ func (s *StorxLogStore) applyLoadedSegmentIndexes(
 	s.indexMu.Lock()
 	defer s.indexMu.Unlock()
 	loaded.Range(func(tp TopicPartition, byOffset *collectionmapping.Map[uint64, segmentRecordPointer]) bool {
-		pointers := collectionlist.NewListWithCapacity[segmentRecordPointer](byOffset.Len())
+		pointers := make([]segmentRecordPointer, 0, byOffset.Len())
 		byOffset.Range(func(_ uint64, pointer segmentRecordPointer) bool {
-			pointers.Add(pointer)
+			pointers = append(pointers, pointer)
 			return true
 		})
-		offsetSorted := sortSegmentPointers(pointers.Values())
+		offsetSorted := sortSegmentPointers(pointers)
 		s.records.Set(tp, offsetSorted)
 		s.timestampRecords.Set(tp, sortSegmentPointersByTimestamp(cloneSegmentPointers(offsetSorted)))
 		s.nextOffsets.Set(tp, max(nextOffsets.GetOrDefault(tp, 0), nextOffsetFromPointers(s.records.GetOrDefault(tp, nil))))
@@ -119,11 +119,9 @@ func applyLoadedSegmentIndexEntry(
 	pointer := entry.Pointer
 	tp := NewTopicPartition(pointer.Topic, pointer.Partition)
 	nextOffsets.Set(tp, max(nextOffsets.GetOrDefault(tp, 0), pointer.Offset+1))
-	byOffset, ok := loaded.Get(tp)
-	if !ok {
-		byOffset = collectionmapping.NewMap[uint64, segmentRecordPointer]()
-		loaded.Set(tp, byOffset)
-	}
+	byOffset, _ := loaded.GetOrCompute(tp, func() *collectionmapping.Map[uint64, segmentRecordPointer] {
+		return collectionmapping.NewMap[uint64, segmentRecordPointer]()
+	})
 	if entry.Deleted {
 		byOffset.Delete(pointer.Offset)
 		return
@@ -135,11 +133,11 @@ func (s *StorxLogStore) appendSegmentIndexPointers(relativePath string, pointers
 	if len(pointers) == 0 {
 		return nil
 	}
-	entries := collectionlist.NewListWithCapacity[segmentIndexEntry](len(pointers))
+	entries := make([]segmentIndexEntry, 0, len(pointers))
 	for _, pointer := range pointers {
-		entries.Add(segmentIndexEntry{Pointer: pointer})
+		entries = append(entries, segmentIndexEntry{Pointer: pointer})
 	}
-	return s.appendSegmentIndexEntries(relativePath, entries.Values())
+	return s.appendSegmentIndexEntries(relativePath, entries)
 }
 
 func (s *StorxLogStore) appendSegmentIndexDeletes(pointers []segmentRecordPointer) error {
@@ -150,13 +148,13 @@ func (s *StorxLogStore) appendSegmentIndexDeletes(pointers []segmentRecordPointe
 		byPath.Set(path, append(byPath.GetOrDefault(path, nil), segmentIndexEntry{Pointer: pointer, Deleted: true}))
 	}
 	var result error
-	indexPaths := collectionlist.NewListWithCapacity[string](byPath.Len())
+	indexPaths := make([]string, 0, byPath.Len())
 	byPath.Range(func(relativePath string, entries []segmentIndexEntry) bool {
 		result = errors.Join(result, s.appendSegmentIndexEntries(relativePath, entries))
-		indexPaths.Add(segmentIndexRelativePath(relativePath))
+		indexPaths = append(indexPaths, segmentIndexRelativePath(relativePath))
 		return true
 	})
-	return errors.Join(result, s.syncAppendWrites(nil, indexPaths.Values()))
+	return errors.Join(result, s.syncAppendWrites(nil, indexPaths))
 }
 
 func (s *StorxLogStore) appendSegmentIndexEntries(relativePath string, entries []segmentIndexEntry) error {
@@ -262,8 +260,8 @@ func segmentIndexRelativePath(segmentRelativePath string) string {
 }
 
 func sortSegmentPointers(pointers []segmentRecordPointer) []segmentRecordPointer {
-	sort.Slice(pointers, func(i, j int) bool {
-		return pointers[i].Offset < pointers[j].Offset
+	slices.SortFunc(pointers, func(left, right segmentRecordPointer) int {
+		return cmp.Compare(left.Offset, right.Offset)
 	})
 	return pointers
 }

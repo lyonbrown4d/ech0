@@ -66,12 +66,12 @@ func (s *MemoryStore) Snapshot() (Snapshot, error) {
 	for _, state := range sortConsumerPauses(s.consumerPauses.Values()) {
 		snap.ConsumerPauses.Add(state)
 	}
-	placements := collectionlist.NewListWithCapacity[ShardPlacement](s.placements.Len())
+	placements := make([]ShardPlacement, 0, s.placements.Len())
 	s.placements.Range(func(_ TopicPartition, placement ShardPlacement) bool {
-		placements.Add(cloneShardPlacement(placement))
+		placements = append(placements, cloneShardPlacement(placement))
 		return true
 	})
-	for _, placement := range sortShardPlacements(placements.Values()) {
+	for _, placement := range sortShardPlacements(placements) {
 		snap.Placements.Add(placement)
 	}
 	s.members.Range(func(_ string, member ConsumerGroupMember) bool {

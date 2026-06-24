@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/gofiber/fiber/v3"
+	"github.com/samber/lo"
 )
 
 type operationsView struct {
@@ -87,93 +87,66 @@ func (s *AdminServer) apiRunDatabaseOutbox(c fiber.Ctx) error {
 }
 
 func webhookSinkViews(sinks []WebhookSinkConfig) []operationSinkView {
-	out := collectionlist.NewListWithCapacity[operationSinkView](len(sinks))
-	for index := range sinks {
-		sink := sinks[index]
-		out.Add(operationSinkView{Name: webhookSinkName(sink), Topic: sink.Topic, Partition: sink.Partition, Target: sink.URL, Action: "/api/ops/webhook-sinks/run"})
-	}
-	return out.Values()
+	return operationSinkViews(sinks, func(sink WebhookSinkConfig) operationSinkView {
+		return operationSinkView{Name: webhookSinkName(sink), Topic: sink.Topic, Partition: sink.Partition, Target: sink.URL, Action: "/api/ops/webhook-sinks/run"}
+	})
 }
 
 func fileSinkViews(sinks []FileSinkConfig) []operationSinkView {
-	out := collectionlist.NewListWithCapacity[operationSinkView](len(sinks))
-	for index := range sinks {
-		sink := sinks[index]
-		out.Add(operationSinkView{Name: fileSinkName(sink), Topic: sink.Topic, Partition: sink.Partition, Target: sink.Path, Action: "/api/ops/file-sinks/run"})
-	}
-	return out.Values()
+	return operationSinkViews(sinks, func(sink FileSinkConfig) operationSinkView {
+		return operationSinkView{Name: fileSinkName(sink), Topic: sink.Topic, Partition: sink.Partition, Target: sink.Path, Action: "/api/ops/file-sinks/run"}
+	})
 }
 
 func mirrorSinkViews(sinks []MirrorSinkConfig) []operationSinkView {
-	out := collectionlist.NewListWithCapacity[operationSinkView](len(sinks))
-	for index := range sinks {
-		sink := sinks[index]
-		out.Add(operationSinkView{Name: mirrorSinkName(sink), Topic: sink.Topic, Partition: sink.Partition, Target: mirrorSinkAdminURL(sink), Action: "/api/ops/mirror-sinks/run"})
-	}
-	return out.Values()
+	return operationSinkViews(sinks, func(sink MirrorSinkConfig) operationSinkView {
+		return operationSinkView{Name: mirrorSinkName(sink), Topic: sink.Topic, Partition: sink.Partition, Target: mirrorSinkAdminURL(sink), Action: "/api/ops/mirror-sinks/run"}
+	})
 }
 
 func s3SinkViews(sinks []S3SinkConfig) []operationSinkView {
-	out := collectionlist.NewListWithCapacity[operationSinkView](len(sinks))
-	for index := range sinks {
-		sink := sinks[index]
-		out.Add(operationSinkView{Name: s3SinkName(sink), Topic: sink.Topic, Partition: sink.Partition, Target: strings.TrimSpace(sink.Bucket), Action: "/api/ops/s3-sinks/run"})
-	}
-	return out.Values()
+	return operationSinkViews(sinks, func(sink S3SinkConfig) operationSinkView {
+		return operationSinkView{Name: s3SinkName(sink), Topic: sink.Topic, Partition: sink.Partition, Target: strings.TrimSpace(sink.Bucket), Action: "/api/ops/s3-sinks/run"}
+	})
 }
 
 func databaseOutboxViews(outboxes []DatabaseOutboxConfig) []operationSinkView {
-	out := collectionlist.NewListWithCapacity[operationSinkView](len(outboxes))
-	for index := range outboxes {
-		outbox := outboxes[index]
-		out.Add(operationSinkView{Name: databaseOutboxName(outbox), Topic: outbox.Topic, Target: strings.TrimSpace(outbox.DriverName), Action: "/api/ops/database-outboxes/run"})
-	}
-	return out.Values()
+	return operationSinkViews(outboxes, func(outbox DatabaseOutboxConfig) operationSinkView {
+		return operationSinkView{Name: databaseOutboxName(outbox), Topic: outbox.Topic, Target: strings.TrimSpace(outbox.DriverName), Action: "/api/ops/database-outboxes/run"}
+	})
+}
+
+func operationSinkViews[T any](items []T, mapper func(T) operationSinkView) []operationSinkView {
+	return lo.Map(items, func(item T, _ int) operationSinkView {
+		return mapper(item)
+	})
 }
 
 func findWebhookSink(sinks []WebhookSinkConfig, name string) (WebhookSinkConfig, bool) {
-	for index := range sinks {
-		if webhookSinkName(sinks[index]) == strings.TrimSpace(name) {
-			return sinks[index], true
-		}
-	}
-	return WebhookSinkConfig{}, false
+	return findOperationConfig(sinks, name, webhookSinkName)
 }
 
 func findFileSink(sinks []FileSinkConfig, name string) (FileSinkConfig, bool) {
-	for index := range sinks {
-		if fileSinkName(sinks[index]) == strings.TrimSpace(name) {
-			return sinks[index], true
-		}
-	}
-	return FileSinkConfig{}, false
+	return findOperationConfig(sinks, name, fileSinkName)
 }
 
 func findMirrorSink(sinks []MirrorSinkConfig, name string) (MirrorSinkConfig, bool) {
-	for index := range sinks {
-		if mirrorSinkName(sinks[index]) == strings.TrimSpace(name) {
-			return sinks[index], true
-		}
-	}
-	return MirrorSinkConfig{}, false
+	return findOperationConfig(sinks, name, mirrorSinkName)
 }
 
 func findS3Sink(sinks []S3SinkConfig, name string) (S3SinkConfig, bool) {
-	for index := range sinks {
-		if s3SinkName(sinks[index]) == strings.TrimSpace(name) {
-			return sinks[index], true
-		}
-	}
-	return S3SinkConfig{}, false
+	return findOperationConfig(sinks, name, s3SinkName)
 }
 
 func findDatabaseOutbox(outboxes []DatabaseOutboxConfig, name string) (DatabaseOutboxConfig, bool) {
-	for index := range outboxes {
-		if databaseOutboxName(outboxes[index]) == strings.TrimSpace(name) {
-			return outboxes[index], true
-		}
-	}
-	return DatabaseOutboxConfig{}, false
+	return findOperationConfig(outboxes, name, databaseOutboxName)
+}
+
+func findOperationConfig[T any](items []T, name string, nameOf func(T) string) (T, bool) {
+	target := strings.TrimSpace(name)
+	return lo.Find(items, func(item T) bool {
+		return nameOf(item) == target
+	})
 }
 
 func redirectOpsResult(c fiber.Ctx, result string, err error) error {

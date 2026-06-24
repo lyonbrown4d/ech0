@@ -1,12 +1,12 @@
 package client
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/lyonbrown4d/ech0/protocol"
 )
 
@@ -66,7 +66,7 @@ func WithAuthToken(token string) Option {
 
 func WithCapabilities(capabilities ...string) Option {
 	return func(opts *Options) {
-		opts.Capabilities = collectionlist.NewList(capabilities...).Values()
+		opts.Capabilities = slices.Clone(capabilities)
 	}
 }
 
@@ -119,7 +119,7 @@ func normalizeOptions(opts []Option) Options {
 	if out.ClientID == "" {
 		out.ClientID = defaultClientID()
 	}
-	out.Capabilities = collectionlist.NewList(out.Capabilities...).Values()
+	out.Capabilities = slices.Clone(out.Capabilities)
 	return out
 }
 

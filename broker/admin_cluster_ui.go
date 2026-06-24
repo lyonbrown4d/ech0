@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/lyonbrown4d/ech0/store"
+	"github.com/samber/lo"
 )
 
 type clusterView struct {
@@ -77,12 +78,9 @@ func clusterMembershipMessage(result ClusterMembershipResult) string {
 }
 
 func changedGroups(groups []ClusterMembershipGroupResult) string {
-	changed := 0
-	for _, group := range groups {
-		if group.Changed {
-			changed++
-		}
-	}
+	changed := lo.CountBy(groups, func(group ClusterMembershipGroupResult) bool {
+		return group.Changed
+	})
 	return strconv.Itoa(changed) + "/" + strconv.Itoa(len(groups))
 }
 

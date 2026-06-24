@@ -7,6 +7,7 @@ import (
 	collectionmapping "github.com/arcgolabs/collectionx/mapping"
 	collectionset "github.com/arcgolabs/collectionx/set"
 	"github.com/lyonbrown4d/ech0/store"
+	"github.com/samber/lo"
 )
 
 func buildCooperativeStickyAssignments(
@@ -33,11 +34,7 @@ func activeMemberMap(active []store.ConsumerGroupMember) *collectionmapping.Map[
 }
 
 func topicPartitionSet(partitions []store.TopicPartition) *collectionset.Set[store.TopicPartition] {
-	out := collectionset.NewSet[store.TopicPartition]()
-	for _, partition := range partitions {
-		out.Add(partition)
-	}
-	return out
+	return collectionset.NewSetWithCapacity[store.TopicPartition](len(partitions), partitions...)
 }
 
 func retainedStickyAssignments(
@@ -46,7 +43,7 @@ func retainedStickyAssignments(
 	partitions *collectionset.Set[store.TopicPartition],
 ) *collectionlist.List[store.GroupPartitionAssignment] {
 	out := collectionlist.NewList[store.GroupPartitionAssignment]()
-	seen := collectionset.NewSet[store.TopicPartition]()
+	seen := collectionset.NewSetWithCapacity[store.TopicPartition](len(previous))
 	for _, assignment := range sortGroupAssignments(previous) {
 		tp := store.NewTopicPartition(assignment.Topic, assignment.Partition)
 		if seen.Contains(tp) || !partitions.Contains(tp) {
@@ -78,7 +75,7 @@ func assignMissingPartitions(assignments *collectionlist.List[store.GroupPartiti
 }
 
 func assignedTopicPartitions(assignments []store.GroupPartitionAssignment) *collectionset.Set[store.TopicPartition] {
-	out := collectionset.NewSet[store.TopicPartition]()
+	out := collectionset.NewSetWithCapacity[store.TopicPartition](len(assignments))
 	for _, assignment := range assignments {
 		out.Add(store.NewTopicPartition(assignment.Topic, assignment.Partition))
 	}
@@ -87,13 +84,10 @@ func assignedTopicPartitions(assignments []store.GroupPartitionAssignment) *coll
 
 func leastLoadedEligibleMember(assignments []store.GroupPartitionAssignment, active []store.ConsumerGroupMember, topic string) (store.ConsumerGroupMember, bool) {
 	loads := groupAssignmentLoads(assignments)
-	candidates := collectionlist.NewList[store.ConsumerGroupMember]()
-	for _, member := range active {
-		if memberWantsTopic(member, topic) {
-			candidates.Add(member)
-		}
-	}
-	sorted := candidates.Sort(func(left, right store.ConsumerGroupMember) int {
+	candidates := lo.Filter(active, func(member store.ConsumerGroupMember, _ int) bool {
+		return memberWantsTopic(member, topic)
+	})
+	sorted := collectionlist.NewList(candidates...).Sort(func(left, right store.ConsumerGroupMember) int {
 		leftLoad := len(loads.Get(left.MemberID))
 		rightLoad := len(loads.Get(right.MemberID))
 		if leftLoad == rightLoad {
@@ -162,13 +156,10 @@ func underloadedMembers(
 	active []store.ConsumerGroupMember,
 	minLoad int,
 ) []store.ConsumerGroupMember {
-	out := collectionlist.NewList[store.ConsumerGroupMember]()
-	for _, member := range active {
-		if len(loads.Get(member.MemberID)) < minLoad {
-			out.Add(member)
-		}
-	}
-	return out.Sort(func(left, right store.ConsumerGroupMember) int {
+	underloaded := lo.Filter(active, func(member store.ConsumerGroupMember, _ int) bool {
+		return len(loads.Get(member.MemberID)) < minLoad
+	})
+	return collectionlist.NewList(underloaded...).Sort(func(left, right store.ConsumerGroupMember) int {
 		leftLoad := len(loads.Get(left.MemberID))
 		rightLoad := len(loads.Get(right.MemberID))
 		if leftLoad == rightLoad {

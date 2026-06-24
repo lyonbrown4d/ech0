@@ -3,8 +3,7 @@ package store
 import (
 	"cmp"
 	"fmt"
-
-	collectionlist "github.com/arcgolabs/collectionx/list"
+	"slices"
 )
 
 type DLQIndexEntry struct {
@@ -92,15 +91,18 @@ func dlqIndexMatchesError(entry DLQIndexEntry, filter DLQIndexFilter) bool {
 }
 
 func sortDLQIndexes(entries []DLQIndexEntry) []DLQIndexEntry {
-	return collectionlist.NewList(entries...).
-		Sort(func(left, right DLQIndexEntry) int {
-			if left.DLQTopic != right.DLQTopic {
-				return cmp.Compare(left.DLQTopic, right.DLQTopic)
-			}
-			if left.DLQPartition != right.DLQPartition {
-				return cmp.Compare(left.DLQPartition, right.DLQPartition)
-			}
-			return cmp.Compare(left.DLQOffset, right.DLQOffset)
-		}).
-		Values()
+	if len(entries) == 0 {
+		return nil
+	}
+	sorted := slices.Clone(entries)
+	slices.SortFunc(sorted, func(left, right DLQIndexEntry) int {
+		if left.DLQTopic != right.DLQTopic {
+			return cmp.Compare(left.DLQTopic, right.DLQTopic)
+		}
+		if left.DLQPartition != right.DLQPartition {
+			return cmp.Compare(left.DLQPartition, right.DLQPartition)
+		}
+		return cmp.Compare(left.DLQOffset, right.DLQOffset)
+	})
+	return sorted
 }

@@ -1,9 +1,9 @@
 package broker
 
 import (
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	collectionset "github.com/arcgolabs/collectionx/set"
 	"github.com/lyonbrown4d/ech0/store"
+	"github.com/samber/lo"
 )
 
 func (b *Broker) applyAckOffset(req commitOffsetCommand) (struct{}, error) {
@@ -82,13 +82,12 @@ func (b *Broker) removePendingAckedRecords(consumer string, tp store.TopicPartit
 }
 
 func recordsWithoutPendingOffsets(records []store.Record, pendingOffsets []uint64) []store.Record {
-	pending := collectionset.NewSet[uint64](pendingOffsets...)
-	out := collectionlist.NewListWithCapacity[store.Record](len(records))
-	for _, record := range records {
-		if pending.Contains(record.Offset) {
-			continue
-		}
-		out.Add(record)
+	pending := collectionset.NewSetWithCapacity[uint64](len(pendingOffsets), pendingOffsets...)
+	out := lo.Filter(records, func(record store.Record, _ int) bool {
+		return !pending.Contains(record.Offset)
+	})
+	if len(out) == 0 {
+		return nil
 	}
-	return out.Values()
+	return out
 }

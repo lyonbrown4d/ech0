@@ -3,12 +3,14 @@ package broker
 import (
 	"cmp"
 	"context"
+	"slices"
 	"strconv"
 
 	collectionlist "github.com/arcgolabs/collectionx/list"
 	collectionmapping "github.com/arcgolabs/collectionx/mapping"
 	collectionset "github.com/arcgolabs/collectionx/set"
 	"github.com/lyonbrown4d/ech0/store"
+	"github.com/samber/lo"
 )
 
 func groupAssignmentsEqual(left, right []store.GroupPartitionAssignment) bool {
@@ -33,7 +35,7 @@ func groupAssignmentStable(previous, next []store.GroupPartitionAssignment, acti
 }
 
 func assignmentMembersMatchActive(assignments []store.GroupPartitionAssignment, active []store.ConsumerGroupMember) bool {
-	members := collectionset.NewSet[string]()
+	members := collectionset.NewSetWithCapacity[string](len(assignments))
 	for _, assignment := range assignments {
 		members.Add(assignment.MemberID)
 	}
@@ -50,10 +52,13 @@ func assignmentMembersMatchActive(assignments []store.GroupPartitionAssignment, 
 
 func memberLoads(assignments []store.GroupPartitionAssignment) []GroupMemberLoadSummary {
 	loads := assignmentsByMember(assignments)
-	members := collectionlist.NewList(loads.Keys()...).Sort(cmp.Compare)
-	return collectionlist.MapList(members, func(_ int, memberID string) GroupMemberLoadSummary {
+	members := collectionlist.NewList(loads.Keys()...).Sort(cmp.Compare).Values()
+	if len(members) == 0 {
+		return nil
+	}
+	return lo.Map(members, func(memberID string, _ int) GroupMemberLoadSummary {
 		return GroupMemberLoadSummary{MemberID: memberID, Partitions: len(loads.Get(memberID))}
-	}).Values()
+	})
 }
 
 func assignmentOwnerTable(assignments []store.GroupPartitionAssignment) *collectionmapping.Table[string, uint32, string] {
@@ -78,7 +83,7 @@ func sortGroupAssignments(assignments []store.GroupPartitionAssignment) []store.
 }
 
 func memberWantsTopic(member store.ConsumerGroupMember, topic string) bool {
-	return collectionset.NewSet(member.Topics...).Contains(topic)
+	return slices.Contains(member.Topics, topic)
 }
 
 func normalizeGroupAssignmentStrategy(raw string) GroupAssignmentStrategy {

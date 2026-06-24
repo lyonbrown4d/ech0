@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/lyonbrown4d/ech0/direct"
 	"github.com/lyonbrown4d/ech0/protocol"
 	"github.com/lyonbrown4d/ech0/store"
 	"github.com/lyonbrown4d/ech0/transport"
+	"github.com/samber/lo"
 )
 
 func (s *TCPServer) handleStartRequestFrame(ctx context.Context, frame transport.Frame) (transport.Frame, error) {
@@ -126,10 +126,11 @@ func fetchRequestsResponseFromBroker(result RequestPollResult) protocol.FetchReq
 }
 
 func requestRecordsFromBroker(requests []RequestMessage) []protocol.RequestRecord {
-	out := collectionlist.NewListWithCapacity[protocol.RequestRecord](len(requests))
-	for i := range requests {
-		req := requests[i]
-		out.Add(protocol.RequestRecord{
+	if len(requests) == 0 {
+		return nil
+	}
+	return lo.Map(requests, func(req RequestMessage, _ int) protocol.RequestRecord {
+		return protocol.RequestRecord{
 			Offset:        req.Record.Offset,
 			TimestampMS:   req.Record.TimestampMS,
 			Subject:       req.Subject,
@@ -140,9 +141,8 @@ func requestRecordsFromBroker(requests []RequestMessage) []protocol.RequestRecor
 			ReplyMode:     string(req.ReplyMode),
 			Headers:       protocolHeadersFromStore(req.Headers),
 			Payload:       append([]byte(nil), req.Payload...),
-		})
-	}
-	return out.Values()
+		}
+	})
 }
 
 func requestMessageFromReplyRequest(req protocol.ReplyRequest) RequestMessage {
@@ -222,11 +222,12 @@ func replyRecordFromBroker(reply ReplyMessage) protocol.ReplyRecord {
 }
 
 func replyRecordsFromBroker(replies []ReplyMessage) []protocol.ReplyRecord {
-	out := collectionlist.NewListWithCapacity[protocol.ReplyRecord](len(replies))
-	for index := range replies {
-		out.Add(replyRecordFromBroker(replies[index]))
+	if len(replies) == 0 {
+		return nil
 	}
-	return out.Values()
+	return lo.Map(replies, func(reply ReplyMessage, _ int) protocol.ReplyRecord {
+		return replyRecordFromBroker(reply)
+	})
 }
 
 func durationFromOptionalMS(value *uint64) time.Duration {

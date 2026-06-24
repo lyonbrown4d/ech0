@@ -1,9 +1,6 @@
 package protocol
 
-import (
-	collectionlist "github.com/arcgolabs/collectionx/list"
-	"github.com/samber/oops"
-)
+import "github.com/samber/oops"
 
 func encodeWith[T any](value any, write func(*binaryWriter, T) error) ([]byte, error) {
 	typed, ok := value.(T)
@@ -35,8 +32,25 @@ func decodeWith[T any](data []byte, target any, read func(*binaryReader) (T, err
 	return nil
 }
 
-func newDecodedList[T any](capacity int) *collectionlist.List[T] {
-	return collectionlist.NewListWithCapacity[T](capacity)
+type decodedList[T any] struct {
+	values []T
+	next   int
+}
+
+func newDecodedList[T any](capacity int) decodedList[T] {
+	if capacity == 0 {
+		return decodedList[T]{}
+	}
+	return decodedList[T]{values: make([]T, capacity)}
+}
+
+func (l *decodedList[T]) Add(value T) {
+	l.values[l.next] = value
+	l.next++
+}
+
+func (l decodedList[T]) Values() []T {
+	return l.values
 }
 
 func typeMismatch[T any](value any) error {

@@ -1,9 +1,9 @@
 package protocol
 
 import (
+	"slices"
 	"strings"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	collectionset "github.com/arcgolabs/collectionx/set"
 )
 
@@ -50,7 +50,10 @@ var supportedCapabilities = []string{
 }
 
 func SupportedCapabilities() []string {
-	return collectionlist.NewList(supportedCapabilities...).Values()
+	if len(supportedCapabilities) == 0 {
+		return nil
+	}
+	return slices.Clone(supportedCapabilities)
 }
 
 func NegotiateCapabilities(requested []string) []string {
@@ -64,11 +67,11 @@ func NegotiateCapabilities(requested []string) []string {
 			want.Add(capability)
 		}
 	}
-	out := collectionlist.NewList[string]()
+	var out []string
 	for _, capability := range supportedCapabilities {
 		if want.Contains(capability) {
-			out.Add(capability)
+			out = append(out, capability)
 		}
 	}
-	return out.Values()
+	return out
 }

@@ -2,9 +2,8 @@ package discovery
 
 import (
 	"context"
+	"maps"
 	"time"
-
-	collectionmapping "github.com/arcgolabs/collectionx/mapping"
 )
 
 type NodeStatus string
@@ -68,6 +67,5 @@ func cloneTags(tags map[string]string) map[string]string {
 	if len(tags) == 0 {
 		return nil
 	}
-	cloned := collectionmapping.NewMapFrom(tags)
-	return cloned.All()
+	return maps.Clone(tags)
 }

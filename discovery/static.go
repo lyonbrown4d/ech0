@@ -3,7 +3,7 @@ package discovery
 import (
 	"context"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
+	"github.com/samber/lo"
 )
 
 type StaticProvider struct {
@@ -44,9 +44,7 @@ func cloneNodes(nodes []Node) []Node {
 	if len(nodes) == 0 {
 		return nil
 	}
-	out := collectionlist.NewListWithCapacity[Node](len(nodes))
-	for _, node := range nodes {
-		out.Add(node.Clone())
-	}
-	return out.Values()
+	return lo.Map(nodes, func(node Node, _ int) Node {
+		return node.Clone()
+	})
 }

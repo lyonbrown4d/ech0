@@ -72,13 +72,12 @@ func (w *binaryWriter) writeF64(value float64) {
 }
 
 func (w *binaryWriter) writeString(value string) error {
-	raw := []byte(value)
-	size, err := checkedUint16(len(raw), "string")
+	size, err := checkedUint16(len(value), "string")
 	if err != nil {
 		return err
 	}
 	w.writeU16(size)
-	if _, err := w.buf.Write(raw); err != nil {
+	if _, err := w.buf.WriteString(value); err != nil {
 		panic(err)
 	}
 	return nil

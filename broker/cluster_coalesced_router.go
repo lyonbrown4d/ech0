@@ -3,7 +3,6 @@ package broker
 import (
 	"context"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	collectionmapping "github.com/arcgolabs/collectionx/mapping"
 	"github.com/lyonbrown4d/ech0/store"
 )
@@ -98,7 +97,7 @@ func (b *Broker) planProduceBatchShardGroups(req produceBatchesCommand) ([]produ
 		group.requests = append(group.requests, planned)
 		groups.Set(shardID, group)
 	}
-	return collectionlist.NewList(groups.Values()...).Values(), items
+	return groups.Values(), items
 }
 
 func (b *Broker) planProduceBatchShardCommand(req produceBatchCommand) (store.ShardID, produceBatchCommand, error) {
@@ -176,7 +175,7 @@ func (b *Broker) planCommitOffsetShardGroups(req commitOffsetsCommand) ([]commit
 		group.requests = append(group.requests, command)
 		groups.Set(placement.ShardID, group)
 	}
-	return collectionlist.NewList(groups.Values()...).Values(), items
+	return groups.Values(), items
 }
 
 func (b *Broker) routeCommitOffsetShardGroup(ctx context.Context, group commitOffsetShardGroup, items []commitOffsetItemResult) {

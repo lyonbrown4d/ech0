@@ -2,8 +2,7 @@ package store
 
 import (
 	"cmp"
-
-	collectionlist "github.com/arcgolabs/collectionx/list"
+	"slices"
 )
 
 func (s *MemoryStore) SaveConsumerPause(state ConsumerPauseState) error {
@@ -55,9 +54,9 @@ func (s ConsumerPauseState) TopicPartition() TopicPartition {
 }
 
 func sortConsumerPauses(states []ConsumerPauseState) []ConsumerPauseState {
-	return collectionlist.NewListWithCapacity[ConsumerPauseState](len(states), states...).
-		Sort(compareConsumerPauseState).
-		Values()
+	sorted := slices.Clone(states)
+	slices.SortFunc(sorted, compareConsumerPauseState)
+	return sorted
 }
 
 func compareConsumerPauseState(left, right ConsumerPauseState) int {

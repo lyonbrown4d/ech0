@@ -2,8 +2,7 @@ package store
 
 import (
 	"fmt"
-
-	collectionlist "github.com/arcgolabs/collectionx/list"
+	"slices"
 )
 
 func offsetKey(consumer string, tp TopicPartition) string {
@@ -94,9 +93,21 @@ func cloneTransactionRecordMetadata(metadata *TransactionRecordMetadata) *Transa
 }
 
 func cloneTransactionState(state TransactionState) TransactionState {
-	state.Partitions = collectionlist.NewList(state.Partitions...).Values()
-	state.PublishedBatches = collectionlist.NewList(state.PublishedBatches...).Values()
-	state.OffsetCommits = collectionlist.NewList(state.OffsetCommits...).Values()
+	if len(state.Partitions) == 0 {
+		state.Partitions = nil
+	} else {
+		state.Partitions = slices.Clone(state.Partitions)
+	}
+	if len(state.PublishedBatches) == 0 {
+		state.PublishedBatches = nil
+	} else {
+		state.PublishedBatches = slices.Clone(state.PublishedBatches)
+	}
+	if len(state.OffsetCommits) == 0 {
+		state.OffsetCommits = nil
+	} else {
+		state.OffsetCommits = slices.Clone(state.OffsetCommits)
+	}
 	return state
 }
 
@@ -108,11 +119,12 @@ func cloneHeaders(headers []RecordHeader) []RecordHeader {
 	if len(headers) == 0 {
 		return nil
 	}
-	out := collectionlist.NewListWithCapacity[RecordHeader](len(headers))
-	for _, header := range headers {
-		out.Add(RecordHeader{Key: header.Key, Value: cloneBytes(header.Value)})
+	out := make([]RecordHeader, len(headers))
+	for i := range headers {
+		header := headers[i]
+		out[i] = RecordHeader{Key: header.Key, Value: cloneBytes(header.Value)}
 	}
-	return out.Values()
+	return out
 }
 
 func cloneBytes(in []byte) []byte {

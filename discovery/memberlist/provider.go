@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	hashimemberlist "github.com/hashicorp/memberlist"
 	"github.com/lyonbrown4d/ech0/discovery"
+	"github.com/samber/lo"
 )
 
 const (
@@ -119,11 +119,12 @@ func (p *Provider) Nodes() []discovery.Node {
 		return []discovery.Node{p.LocalNode()}
 	}
 	members := list.Members()
-	out := collectionlist.NewListWithCapacity[discovery.Node](len(members))
-	for _, member := range members {
-		out.Add(nodeFromMember(member))
+	if len(members) == 0 {
+		return nil
 	}
-	return out.Values()
+	return lo.Map(members, func(member *hashimemberlist.Node, _ int) discovery.Node {
+		return nodeFromMember(member)
+	})
 }
 
 func (p *Provider) Events() <-chan discovery.Event {
@@ -233,11 +234,11 @@ func cloneStrings(values []string) []string {
 	if len(values) == 0 {
 		return nil
 	}
-	out := collectionlist.NewListWithCapacity[string](len(values))
-	for _, value := range values {
-		if value != "" {
-			out.Add(value)
-		}
+	out := lo.FilterMap(values, func(value string, _ int) (string, bool) {
+		return value, value != ""
+	})
+	if len(out) == 0 {
+		return nil
 	}
-	return out.Values()
+	return out
 }

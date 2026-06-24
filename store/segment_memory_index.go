@@ -1,9 +1,8 @@
 package store
 
 import (
+	"slices"
 	"sort"
-
-	collectionlist "github.com/arcgolabs/collectionx/list"
 )
 
 func (s *StorxLogStore) recordPointersFrom(tp TopicPartition, offset uint64, maxRecords int) []segmentRecordPointer {
@@ -105,14 +104,14 @@ func (s *StorxLogStore) removeKeyPointersLocked(tp TopicPartition, remove interf
 	if !ok || keyPointers == nil {
 		return
 	}
-	keys := collectionlist.NewList[string]()
+	keys := make([]string, 0, keyPointers.Len())
 	keyPointers.Range(func(key string, pointer segmentRecordPointer) bool {
 		if remove.Contains(pointer.Offset) {
-			keys.Add(key)
+			keys = append(keys, key)
 		}
 		return true
 	})
-	for _, key := range keys.Values() {
+	for _, key := range keys {
 		keyPointers.Delete(key)
 	}
 }
@@ -142,7 +141,7 @@ func cloneSegmentPointers(pointers []segmentRecordPointer) []segmentRecordPointe
 	if len(pointers) == 0 {
 		return nil
 	}
-	return append([]segmentRecordPointer(nil), pointers...)
+	return slices.Clone(pointers)
 }
 
 func segmentPointerOffsets(pointers []segmentRecordPointer) []uint64 {

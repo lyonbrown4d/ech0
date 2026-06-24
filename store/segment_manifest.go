@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	json "github.com/goccy/go-json"
 	renameio "github.com/google/renameio/v2/maybe"
 )
@@ -59,13 +59,13 @@ func (s *StorxLogStore) loadLogManifest() error {
 
 func (s *StorxLogStore) persistLogManifest() error {
 	s.indexMu.RLock()
-	topics := collectionlist.NewListWithCapacity[TopicConfig](s.topics.Len())
+	topics := make([]TopicConfig, 0, s.topics.Len())
 	s.topics.Range(func(_ string, topic TopicConfig) bool {
-		topics.Add(cloneTopic(topic))
+		topics = append(topics, cloneTopic(topic))
 		return true
 	})
 	s.indexMu.RUnlock()
-	manifest := segmentManifest{Topics: sortTopics(topics.Values())}
+	manifest := segmentManifest{Topics: sortTopics(topics)}
 	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return wrapExternal(err, "encode segment log manifest")
@@ -96,9 +96,12 @@ func (s *StorxLogStore) ensureTopicPartitionsLocked(topic TopicConfig) {
 }
 
 func sortTopics(topics []TopicConfig) []TopicConfig {
-	return collectionlist.NewList(topics...).
-		Sort(func(left, right TopicConfig) int {
-			return cmp.Compare(left.Name, right.Name)
-		}).
-		Values()
+	if len(topics) == 0 {
+		return nil
+	}
+	sorted := slices.Clone(topics)
+	slices.SortFunc(sorted, func(left, right TopicConfig) int {
+		return cmp.Compare(left.Name, right.Name)
+	})
+	return sorted
 }

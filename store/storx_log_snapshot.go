@@ -82,14 +82,17 @@ func (s *StorxLogStore) snapshotPartitionRecords(
 	pointers []segmentRecordPointer,
 	records *collectionmapping.Map[string, []Record],
 ) error {
-	for _, pointer := range pointers {
-		record, err := s.readPointer(pointer)
-		if err != nil {
-			return err
-		}
-		key := partitionKey(tp)
-		topicRecords := records.GetOrDefault(key, nil)
-		records.Set(key, append(topicRecords, cloneRecord(record)))
+	if len(pointers) == 0 {
+		return nil
 	}
+	partitionRecords, err := s.readPointers(pointers)
+	if err != nil {
+		return err
+	}
+	if len(partitionRecords) == 0 {
+		return nil
+	}
+	key := partitionKey(tp)
+	records.Set(key, append(records.GetOrDefault(key, nil), cloneRecords(partitionRecords)...))
 	return nil
 }

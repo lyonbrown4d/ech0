@@ -2,8 +2,8 @@ package store
 
 import (
 	"cmp"
+	"slices"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	collectionmapping "github.com/arcgolabs/collectionx/mapping"
 	collectionset "github.com/arcgolabs/collectionx/set"
 )
@@ -211,10 +211,14 @@ func RecordAppendStorageBytes(record RecordAppend) uint64 {
 }
 
 func sortedRecords(records []Record) []Record {
-	return collectionlist.NewList(records...).
-		Sort(func(left, right Record) int {
-			return cmp.Compare(left.Offset, right.Offset)
-		}).Values()
+	if len(records) == 0 {
+		return nil
+	}
+	sorted := slices.Clone(records)
+	slices.SortFunc(sorted, func(left, right Record) int {
+		return cmp.Compare(left.Offset, right.Offset)
+	})
+	return sorted
 }
 
 func saturatingSub(v, other uint64) uint64 {

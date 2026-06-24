@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/gofiber/fiber/v3"
+	"github.com/samber/lo"
 )
 
 func parseUint32Query(c fiber.Ctx, key string) uint32 {
@@ -66,23 +66,20 @@ func aclPolicyFromForm(c fiber.Ctx) ACLPolicy {
 }
 
 func parseACLActions(value string) []ACLAction {
-	parts := strings.Split(value, ",")
-	actions := collectionlist.NewList[ACLAction]()
-	for _, part := range parts {
+	actions := lo.FilterMap(strings.Split(value, ","), func(part string, _ int) (ACLAction, bool) {
 		action := strings.TrimSpace(part)
-		if action != "" {
-			actions.Add(ACLAction(action))
-		}
+		return ACLAction(action), action != ""
+	})
+	if len(actions) == 0 {
+		return nil
 	}
-	return actions.Values()
+	return actions
 }
 
 func aclActionList(actions []ACLAction) string {
-	values := collectionlist.NewListWithCapacity[string](len(actions))
-	for _, action := range actions {
-		values.Add(string(action))
-	}
-	return strings.Join(values.Values(), ",")
+	return strings.Join(lo.Map(actions, func(action ACLAction, _ int) string {
+		return string(action)
+	}), ",")
 }
 
 func redirectACLPolicies(c fiber.Ctx, tenant, namespace string) error {

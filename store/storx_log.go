@@ -236,12 +236,9 @@ func (s *StorxLogStore) AppendRecord(topicPartition TopicPartition, appendRecord
 func (s *StorxLogStore) partitionLock(topicPartition TopicPartition) *sync.Mutex {
 	s.partitionLocksMu.Lock()
 	defer s.partitionLocksMu.Unlock()
-	lock, ok := s.partitionLocks.Get(topicPartition)
-	if ok {
-		return lock
-	}
-	lock = &sync.Mutex{}
-	s.partitionLocks.Set(topicPartition, lock)
+	lock, _ := s.partitionLocks.GetOrCompute(topicPartition, func() *sync.Mutex {
+		return &sync.Mutex{}
+	})
 	return lock
 }
 

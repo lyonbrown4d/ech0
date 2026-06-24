@@ -5,9 +5,8 @@ import (
 	"slices"
 	"strings"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
-	collectionset "github.com/arcgolabs/collectionx/set"
 	"github.com/lyonbrown4d/ech0/store"
+	"github.com/samber/lo"
 )
 
 func normalizeACLPolicy(identity Identity, policy ACLPolicy) ACLPolicy {
@@ -43,17 +42,27 @@ func normalizeACLActions(actions []ACLAction) []ACLAction {
 	if len(actions) == 0 {
 		return []ACLAction{ACLAction(aclPolicyWildcard)}
 	}
-	out := collectionlist.NewList[ACLAction]()
-	seen := collectionset.NewSet[ACLAction]()
-	for _, action := range actions {
-		action = ACLAction(normalizeACLWildcard(string(action)))
-		if seen.Contains(action) {
-			continue
-		}
-		seen.Add(action)
-		out.Add(action)
+	return lo.Uniq(lo.Map(actions, func(action ACLAction, _ int) ACLAction {
+		return ACLAction(normalizeACLWildcard(string(action)))
+	}))
+}
+
+func aclActionsToStrings(actions []ACLAction) []string {
+	if len(actions) == 0 {
+		return nil
 	}
-	return out.Values()
+	return lo.Map(actions, func(action ACLAction, _ int) string {
+		return string(action)
+	})
+}
+
+func stringsToACLActions(actions []string) []ACLAction {
+	if len(actions) == 0 {
+		return nil
+	}
+	return lo.Map(actions, func(action string, _ int) ACLAction {
+		return ACLAction(action)
+	})
 }
 
 func validateBrokerACLPolicy(policy ACLPolicy) error {
@@ -72,9 +81,7 @@ func validateBrokerACLPolicy(policy ACLPolicy) error {
 }
 
 func generatedACLPolicyID(policy ACLPolicy) string {
-	actions := collectionlist.MapList(collectionlist.NewList(policy.Actions...), func(_ int, action ACLAction) string {
-		return string(action)
-	}).Values()
+	actions := aclActionsToStrings(policy.Actions)
 	slices.Sort(actions)
 	return fmt.Sprintf(
 		"%s/%s/%s/%s/%s/%s/%s",
@@ -89,9 +96,7 @@ func generatedACLPolicyID(policy ACLPolicy) string {
 }
 
 func brokerACLPolicyToStore(policy ACLPolicy) store.ACLPolicy {
-	actions := collectionlist.MapList(collectionlist.NewList(policy.Actions...), func(_ int, action ACLAction) string {
-		return string(action)
-	}).Values()
+	actions := aclActionsToStrings(policy.Actions)
 	return store.ACLPolicy{
 		PolicyID:     policy.PolicyID,
 		Tenant:       policy.Tenant,
@@ -107,9 +112,7 @@ func brokerACLPolicyToStore(policy ACLPolicy) store.ACLPolicy {
 }
 
 func storeACLPolicyToBroker(policy store.ACLPolicy) ACLPolicy {
-	actions := collectionlist.MapList(collectionlist.NewList(policy.Actions...), func(_ int, action string) ACLAction {
-		return ACLAction(action)
-	}).Values()
+	actions := stringsToACLActions(policy.Actions)
 	return ACLPolicy{
 		PolicyID:     policy.PolicyID,
 		Tenant:       policy.Tenant,

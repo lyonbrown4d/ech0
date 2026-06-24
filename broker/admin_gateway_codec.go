@@ -6,8 +6,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/lyonbrown4d/ech0/store"
+	"github.com/samber/lo"
 )
 
 func gatewayRecordAppend(payload, payloadBase64, key, keyBase64 string, headers []gatewayHeader) (store.RecordAppend, error) {
@@ -37,15 +37,20 @@ func gatewayBytes(value, base64Value, field string) ([]byte, error) {
 }
 
 func gatewayHeaders(headers []gatewayHeader) ([]store.RecordHeader, error) {
-	out := collectionlist.NewListWithCapacity[store.RecordHeader](len(headers))
-	for index := range headers {
-		value, err := gatewayBytes(headers[index].Value, headers[index].ValueBase64, "header "+headers[index].Key)
-		if err != nil {
-			return nil, err
-		}
-		out.Add(store.RecordHeader{Key: headers[index].Key, Value: value})
+	if len(headers) == 0 {
+		return nil, nil
 	}
-	return out.Values(), nil
+	out, err := lo.MapErr(headers, func(header gatewayHeader, _ int) (store.RecordHeader, error) {
+		value, err := gatewayBytes(header.Value, header.ValueBase64, "header "+header.Key)
+		if err != nil {
+			return store.RecordHeader{}, err
+		}
+		return store.RecordHeader{Key: header.Key, Value: value}, nil
+	})
+	if err != nil {
+		return nil, wrapBroker("admin_gateway_headers_decode_failed", err, "decode gateway headers")
+	}
+	return out, nil
 }
 
 func gatewayPartitioning(in *gatewayProduceInput) PublishPartitioning {
@@ -80,9 +85,12 @@ func gatewayFetchOffset(value string) (uint64, bool, error) {
 }
 
 func gatewayRecords(records []store.Record) []gatewayRecordResponse {
-	return collectionlist.MapList(collectionlist.NewList(records...), func(_ int, record store.Record) gatewayRecordResponse {
+	if len(records) == 0 {
+		return nil
+	}
+	return lo.Map(records, func(record store.Record, _ int) gatewayRecordResponse {
 		return gatewayRecord(record)
-	}).Values()
+	})
 }
 
 func gatewayRecord(record store.Record) gatewayRecordResponse {
@@ -101,13 +109,16 @@ func gatewayRecord(record store.Record) gatewayRecordResponse {
 }
 
 func gatewayHeadersFromStore(headers []store.RecordHeader) []gatewayHeader {
-	return collectionlist.MapList(collectionlist.NewList(headers...), func(_ int, header store.RecordHeader) gatewayHeader {
+	if len(headers) == 0 {
+		return nil
+	}
+	return lo.Map(headers, func(header store.RecordHeader, _ int) gatewayHeader {
 		return gatewayHeader{
 			Key:         header.Key,
 			Value:       gatewayUTF8(header.Value),
 			ValueBase64: base64.StdEncoding.EncodeToString(header.Value),
 		}
-	}).Values()
+	})
 }
 
 func gatewayUTF8(value []byte) string {

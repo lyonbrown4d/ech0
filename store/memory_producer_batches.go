@@ -2,8 +2,7 @@ package store
 
 import (
 	"cmp"
-
-	collectionlist "github.com/arcgolabs/collectionx/list"
+	"slices"
 )
 
 func (s *MemoryStore) SaveProducerBatch(batch ProducerPublishedBatch) error {
@@ -19,14 +18,14 @@ func (s *MemoryStore) SaveProducerBatch(batch ProducerPublishedBatch) error {
 func (s *MemoryStore) ListProducerBatches(filter ProducerBatchFilter) ([]ProducerPublishedBatch, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := collectionlist.NewList[ProducerPublishedBatch]()
+	out := make([]ProducerPublishedBatch, 0, s.producerBatches.Len())
 	s.producerBatches.Range(func(_ string, batch ProducerPublishedBatch) bool {
 		if producerBatchMatchesFilter(batch, filter) {
-			out.Add(cloneProducerPublishedBatch(batch))
+			out = append(out, cloneProducerPublishedBatch(batch))
 		}
 		return true
 	})
-	return sortProducerPublishedBatches(out.Values()), nil
+	return sortProducerPublishedBatches(out), nil
 }
 
 func (s *MemoryStore) DeleteProducerBatch(batch ProducerPublishedBatch) error {
@@ -75,21 +74,21 @@ func producerBatchMatchesFilter(batch ProducerPublishedBatch, filter ProducerBat
 }
 
 func sortProducerPublishedBatches(batches []ProducerPublishedBatch) []ProducerPublishedBatch {
-	return collectionlist.NewList(batches...).
-		Sort(func(left, right ProducerPublishedBatch) int {
-			if left.ProducerID != right.ProducerID {
-				return cmp.Compare(left.ProducerID, right.ProducerID)
-			}
-			if left.Topic != right.Topic {
-				return cmp.Compare(left.Topic, right.Topic)
-			}
-			if left.Partition != right.Partition {
-				return cmp.Compare(left.Partition, right.Partition)
-			}
-			if left.ProducerEpoch != right.ProducerEpoch {
-				return cmp.Compare(left.ProducerEpoch, right.ProducerEpoch)
-			}
-			return cmp.Compare(left.BaseSequence, right.BaseSequence)
-		}).
-		Values()
+	sorted := slices.Clone(batches)
+	slices.SortFunc(sorted, func(left, right ProducerPublishedBatch) int {
+		if left.ProducerID != right.ProducerID {
+			return cmp.Compare(left.ProducerID, right.ProducerID)
+		}
+		if left.Topic != right.Topic {
+			return cmp.Compare(left.Topic, right.Topic)
+		}
+		if left.Partition != right.Partition {
+			return cmp.Compare(left.Partition, right.Partition)
+		}
+		if left.ProducerEpoch != right.ProducerEpoch {
+			return cmp.Compare(left.ProducerEpoch, right.ProducerEpoch)
+		}
+		return cmp.Compare(left.BaseSequence, right.BaseSequence)
+	})
+	return sorted
 }

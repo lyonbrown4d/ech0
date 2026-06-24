@@ -1,27 +1,33 @@
 package broker
 
 import (
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/lyonbrown4d/ech0/protocol"
 	"github.com/lyonbrown4d/ech0/store"
+	"github.com/samber/lo"
 )
 
 func storeHeadersFromProtocol(headers []protocol.MessageHeader) []store.RecordHeader {
-	return collectionlist.MapList(collectionlist.NewList(headers...), func(_ int, header protocol.MessageHeader) store.RecordHeader {
+	if len(headers) == 0 {
+		return nil
+	}
+	return lo.Map(headers, func(header protocol.MessageHeader, _ int) store.RecordHeader {
 		return store.RecordHeader{
 			Key:   header.Key,
 			Value: append([]byte(nil), header.Value...),
 		}
-	}).Values()
+	})
 }
 
 func protocolHeadersFromStore(headers []store.RecordHeader) []protocol.MessageHeader {
-	return collectionlist.MapList(collectionlist.NewList(headers...), func(_ int, header store.RecordHeader) protocol.MessageHeader {
+	if len(headers) == 0 {
+		return nil
+	}
+	return lo.Map(headers, func(header store.RecordHeader, _ int) protocol.MessageHeader {
 		return protocol.MessageHeader{
 			Key:   header.Key,
 			Value: append([]byte(nil), header.Value...),
 		}
-	}).Values()
+	})
 }
 
 func isolationFromProtocol(value protocol.FetchIsolation) FetchIsolation {

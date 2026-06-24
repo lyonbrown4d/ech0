@@ -1,15 +1,21 @@
 package store
 
-import collectionlist "github.com/arcgolabs/collectionx/list"
+import "slices"
 
 func cloneRecords(records []Record) []Record {
-	copied := collectionlist.NewListWithCapacity[Record](len(records))
-	for _, record := range records {
-		copied.Add(cloneRecord(record))
+	if len(records) == 0 {
+		return nil
 	}
-	return copied.Values()
+	copied := make([]Record, len(records))
+	for i := range records {
+		copied[i] = cloneRecord(records[i])
+	}
+	return copied
 }
 
 func cloneGroupPartitionAssignments(assignments []GroupPartitionAssignment) []GroupPartitionAssignment {
-	return collectionlist.NewList(assignments...).Values()
+	if len(assignments) == 0 {
+		return nil
+	}
+	return slices.Clone(assignments)
 }

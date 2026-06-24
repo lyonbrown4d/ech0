@@ -3,8 +3,8 @@ package broker
 import (
 	"strconv"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/gofiber/fiber/v3"
+	"github.com/samber/lo"
 )
 
 const governanceACLPreviewLimit = 5
@@ -81,29 +81,25 @@ func (s *AdminServer) effectiveGovernanceConfig() GovernanceConfig {
 }
 
 func governanceAuthFromConfig(cfg AuthConfig) governanceAuthView {
-	tokens := collectionlist.NewListWithCapacity[governanceStaticTokenView](len(cfg.StaticTokens))
-	for _, token := range cfg.StaticTokens {
-		tokens.Add(governanceStaticTokenView{
-			Principal: token.Principal,
-			Tenant:    token.Tenant,
-			Namespace: token.Namespace,
-			ClientID:  token.ClientID,
-			Instance:  token.Instance,
-		})
-	}
 	return governanceAuthView{
 		Enabled:          cfg.Enabled,
 		AllowAnonymous:   cfg.AllowAnonymous,
 		StaticTokenCount: len(cfg.StaticTokens),
-		StaticTokens:     tokens.Values(),
+		StaticTokens: lo.Map(cfg.StaticTokens, func(token StaticAuthTokenConfig, _ int) governanceStaticTokenView {
+			return governanceStaticTokenView{
+				Principal: token.Principal,
+				Tenant:    token.Tenant,
+				Namespace: token.Namespace,
+				ClientID:  token.ClientID,
+				Instance:  token.Instance,
+			}
+		}),
 	}
 }
 
 func governanceTenantDefaultsFromConfig(defaults []TenantDefaultsConfig) []governanceTenantDefaultView {
-	out := collectionlist.NewListWithCapacity[governanceTenantDefaultView](len(defaults))
-	for index := range defaults {
-		item := &defaults[index]
-		out.Add(governanceTenantDefaultView{
+	return lo.Map(defaults, func(item TenantDefaultsConfig, _ int) governanceTenantDefaultView {
+		return governanceTenantDefaultView{
 			Tenant:              item.Tenant,
 			Namespace:           item.Namespace,
 			RetentionMaxBytes:   item.RetentionMaxBytes,
@@ -113,21 +109,12 @@ func governanceTenantDefaultsFromConfig(defaults []TenantDefaultsConfig) []gover
 			DelayEnabled:        optionalBoolValue(item.DelayEnabled),
 			RetryMaxAttempts:    item.RetryPolicy.MaxAttempts,
 			DeadLetterTopic:     item.DeadLetterTopic,
-		})
-	}
-	return out.Values()
+		}
+	})
 }
 
 func previewACLPolicies(policies []ACLPolicy) []ACLPolicy {
-	limit := min(governanceACLPreviewLimit, len(policies))
-	out := collectionlist.NewListWithCapacity[ACLPolicy](limit)
-	for index := range policies {
-		if index >= limit {
-			break
-		}
-		out.Add(policies[index])
-	}
-	return out.Values()
+	return lo.Take(policies, governanceACLPreviewLimit)
 }
 
 func optionalUint64Value(value *uint64) string {

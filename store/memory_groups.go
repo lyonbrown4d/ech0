@@ -2,8 +2,7 @@ package store
 
 import (
 	"cmp"
-
-	collectionlist "github.com/arcgolabs/collectionx/list"
+	"slices"
 )
 
 func (s *MemoryStore) SaveGroupMember(member ConsumerGroupMember) error {
@@ -25,27 +24,26 @@ func (s *MemoryStore) LoadGroupMember(group, memberID string) (*ConsumerGroupMem
 		var absent *ConsumerGroupMember
 		return absent, nil
 	}
-	member.Topics = collectionlist.NewList(member.Topics...).Values()
+	member.Topics = slices.Clone(member.Topics)
 	return &member, nil
 }
 
 func (s *MemoryStore) ListGroupMembers(group string) ([]ConsumerGroupMember, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := collectionlist.NewListWithCapacity[ConsumerGroupMember](s.members.Len())
+	out := make([]ConsumerGroupMember, 0, s.members.Len())
 	s.members.Range(func(_ string, member ConsumerGroupMember) bool {
 		if member.Group != group {
 			return true
 		}
 		member.Topics = sortedStrings(member.Topics)
-		out.Add(member)
+		out = append(out, member)
 		return true
 	})
-	return out.
-		Sort(func(left, right ConsumerGroupMember) int {
-			return cmp.Compare(left.MemberID, right.MemberID)
-		}).
-		Values(), nil
+	slices.SortFunc(out, func(left, right ConsumerGroupMember) int {
+		return cmp.Compare(left.MemberID, right.MemberID)
+	})
+	return out, nil
 }
 
 func (s *MemoryStore) DeleteGroupMember(group, memberID string) error {
@@ -95,17 +93,16 @@ func (s *MemoryStore) LoadGroupAssignment(group string) (*ConsumerGroupAssignmen
 func (s *MemoryStore) ListGroupAssignments() ([]ConsumerGroupAssignment, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := collectionlist.NewListWithCapacity[ConsumerGroupAssignment](s.assignments.Len())
+	out := make([]ConsumerGroupAssignment, 0, s.assignments.Len())
 	s.assignments.Range(func(_ string, assignment ConsumerGroupAssignment) bool {
 		assignment.Assignments = cloneGroupPartitionAssignments(assignment.Assignments)
-		out.Add(assignment)
+		out = append(out, assignment)
 		return true
 	})
-	return out.
-		Sort(func(left, right ConsumerGroupAssignment) int {
-			return cmp.Compare(left.Group, right.Group)
-		}).
-		Values(), nil
+	slices.SortFunc(out, func(left, right ConsumerGroupAssignment) int {
+		return cmp.Compare(left.Group, right.Group)
+	})
+	return out, nil
 }
 
 func (s *MemoryStore) SaveBrokerState(state BrokerState) error {
@@ -128,7 +125,7 @@ func (s *MemoryStore) LoadBrokerState() (*BrokerState, error) {
 }
 
 func sortedStrings(values []string) []string {
-	return collectionlist.NewList(values...).
-		Sort(cmp.Compare[string]).
-		Values()
+	out := slices.Clone(values)
+	slices.Sort(out)
+	return out
 }

@@ -1,9 +1,7 @@
 package protocol
 
-import collectionlist "github.com/arcgolabs/collectionx/list"
-
-func bodyCodecEntries() *collectionlist.List[bodyCodecEntry] {
-	return collectionlist.NewList(
+func bodyCodecEntries() []bodyCodecEntry {
+	return []bodyCodecEntry{
 		bodyCodecEntry{CmdHandshakeRequest, encodeHandshakeRequest, decodeHandshakeRequest},
 		bodyCodecEntry{CmdHandshakeResponse, encodeHandshakeResponse, decodeHandshakeResponse},
 		bodyCodecEntry{CmdPingRequest, encodePingRequest, decodePingRequest},
@@ -79,5 +77,5 @@ func bodyCodecEntries() *collectionlist.List[bodyCodecEntry] {
 		bodyCodecEntry{CmdAwaitRepliesRequest, encodeAwaitRepliesRequest, decodeAwaitRepliesRequest},
 		bodyCodecEntry{CmdAwaitRepliesResponse, encodeAwaitRepliesResponse, decodeAwaitRepliesResponse},
 		bodyCodecEntry{CmdErrorResponse, encodeErrorResponse, decodeErrorResponse},
-	)
+	}
 }

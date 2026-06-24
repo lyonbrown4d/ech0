@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 
-	collectionlist "github.com/arcgolabs/collectionx/list"
 	"github.com/arcgolabs/mapper"
 	"github.com/lyonbrown4d/ech0/direct"
 	"github.com/lyonbrown4d/ech0/protocol"
 	protocolbinary "github.com/lyonbrown4d/ech0/protocol/binary"
 	"github.com/lyonbrown4d/ech0/store"
 	"github.com/lyonbrown4d/ech0/transport"
+	"github.com/samber/lo"
 	"github.com/samber/oops"
 )
 
@@ -181,11 +181,12 @@ func mergeProduceBatchesResponse(
 	base []protocol.ProduceBatchesItemResponse,
 	results []produceBatchItemResult,
 ) []protocol.ProduceBatchesItemResponse {
-	out := collectionlist.NewListWithCapacity[protocol.ProduceBatchesItemResponse](len(base))
-	for index, item := range base {
-		out.Add(mergeProduceBatchesItemResponse(index, requests, item, results))
+	if len(base) == 0 {
+		return nil
 	}
-	return out.Values()
+	return lo.Map(base, func(item protocol.ProduceBatchesItemResponse, index int) protocol.ProduceBatchesItemResponse {
+		return mergeProduceBatchesItemResponse(index, requests, item, results)
+	})
 }
 
 func mergeProduceBatchesItemResponse(
@@ -256,9 +257,11 @@ func optionalAssignmentToProtocol(assignment *store.ConsumerGroupAssignment) (pr
 }
 
 func directMessagesToProtocol(records []direct.InboxRecord) []protocol.DirectMessageRecord {
-	out := collectionlist.NewListWithCapacity[protocol.DirectMessageRecord](len(records))
-	for _, record := range records {
-		out.Add(protocol.DirectMessageRecord{
+	if len(records) == 0 {
+		return nil
+	}
+	return lo.Map(records, func(record direct.InboxRecord, _ int) protocol.DirectMessageRecord {
+		return protocol.DirectMessageRecord{
 			Offset:         record.Offset,
 			MessageID:      record.Message.MessageID,
 			ConversationID: record.Message.ConversationID,
@@ -266,7 +269,6 @@ func directMessagesToProtocol(records []direct.InboxRecord) []protocol.DirectMes
 			Recipient:      record.Message.Recipient,
 			TimestampMS:    record.Message.TimestampMS,
 			Payload:        record.Message.Payload,
-		})
-	}
-	return out.Values()
+		}
+	})
 }
